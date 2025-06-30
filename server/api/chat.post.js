@@ -1,31 +1,30 @@
 export default defineEventHandler(async (event) => {
-	const config = useRuntimeConfig();
-	let messages = [];
-	const previosMessages = await readBody(event);
-	messages = messages.concat(previosMessages);
-	let prompt =
-		messages.map((message) => `${message.role}: ${message.message}`).join('\n') + `\nAI:`;
-	const req = await fetch('https://api.openai.com/v1/completions', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${config.OPENAI_API_KEY}`
-		},
-		body: JSON.stringify({
-			model: 'text-davinci-003',
-			prompt: prompt,
-			temperature: 0.9,
-			max_tokens: 512,
-			top_p: 1.0,
-			frequency_penalty: 0,
-			presence_penalty: 0.6,
-			stop: [' User:', ' AI:']
-		})
-	});
+  try {
+    const previousMessages = await readBody(event);
+    const chatId = getCookie(event, 'chatId'); // or use query/cookies/storage as you prefer
 
-	const res = await req.json();
-	const result = res.choices[0];
-	return {
-		message: result.text
-	};
+    const response = await fetch(`http://localhost:5200/api/Chat/complete${chatId ? `?chatId=${chatId}` : ''}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(previousMessages)
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Backend error:', response.status, error);
+      return { message: `Backend error: ${response.status} ${response.statusText}` };
+    }
+
+    const data = await response.json();
+
+    // Save chatId if provided in the response
+    if (data.chatId) {
+      setCookie(event, 'chatId', data.chatId, { path: '/' });
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return { message: "Failed to connect to backend" };
+  }
 });

@@ -19,45 +19,57 @@
 		if (message.value === '') return;
 		loading.value = true;
 
-		messages.value.push({
+		// Add user message
+		const userMessage = {
 			role: 'User',
 			message: message.value
-		});
-
-		scrollToEnd();
+		};
+		messages.value.push(userMessage);
 		message.value = '';
-
-		const res = await fetch(`/api/chat`, {
-			body: JSON.stringify(messages.value.slice(1)),
-			method: 'post'
-		});
-
-		if (res.status === 200) {
-			const response = await res.json();
-			messages.value.push({
-				role: 'AI',
-				message: response?.message
-			});
-		} else {
-			messages.value.push({
-				role: 'AI',
-				message: 'Sorry, an error occurred.'
-			});
-		}
-
-		loading.value = false;
 		scrollToEnd();
-	};
+
+			try {
+			const res = await fetch('/api/chat', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify([{
+				role: 'User',
+				message: userMessage.message
+			}])
+			});
+
+
+		if (res.ok) {
+		const response = await res.json();
+		messages.value.push({
+			role: 'AI',
+			message: response?.message || 'No response'
+		});
+		} else {
+		throw new Error('API request failed');
+		}
+		} catch (error) {
+			messages.value.push({
+			role: 'AI',
+			message: 'Sorry, an error occurred.'
+			});
+		} finally {
+			loading.value = false;
+			scrollToEnd();
+		}
+		};
 </script>
 
 <template>
 	<div class="max-w-xl mx-auto text-black">
-		<a
+		<!-- <a
 			href="https://vercel.com/templates/next.js/blob-sveltekit"
 			class="flex justify-center px-10 py-2 mx-auto space-x-1 text-sm font-medium text-center text-gray-600 transition-all rounded-full shadow-sm group bg-white/30 ring-1 ring-gray-900/5 hover:shadow-lg active:shadow-sm"
 		>
 			Deploy your own to Vercel
-		</a>
+		</a> -->
 		<h1 class="my-8 text-5xl font-bold text-center text-black">AI Chatbot</h1>
 		<div class="max-w-xl mx-auto">
 			<div class="bg-white rounded-md shadow h-[60vh] flex flex-col justify-between">
@@ -118,7 +130,7 @@
 				</form>
 			</div>
 		</div>
-		<div class="flex flex-col justify-center w-full my-4">
+		<!-- <div class="flex flex-col justify-center w-full my-4">
 			<div class="flex items-center justify-center my-2">
 				<span>Built with</span>
 				<a
@@ -149,7 +161,7 @@
 					<p class="ml-1">Source</p>
 				</a>
 			</div>
-		</div>
+		</div> -->
 	</div>
 </template>
 
